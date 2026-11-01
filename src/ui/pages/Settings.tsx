@@ -41,29 +41,56 @@ function download(file: File) {
   setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
 }
 
+const UNCONFIRMED = '分享失敗，已改用下載。請確認檔案有存下來，再重試一次分享';
+
 /**
  * iOS standalone apps cannot use <a download>; the share sheet offers "Save to Files".
- * Returns false when the file went out by a route we cannot confirm.
+ * 'unconfirmed' means the file went out by a route we cannot verify.
  */
-async function deliver(file: File) {
+async function deliver(file: File): Promise<'sent' | 'unconfirmed' | 'cancelled'> {
   if (!navigator.canShare?.({ files: [file] })) {
     download(file);
-    return true;
+    return 'sent';
   }
   try {
     await navigator.share({ files: [file] });
-    return true;
+    return 'sent';
   } catch (e) {
-    if ((e as Error).name === 'AbortError') throw e;
+    if ((e as Error).name === 'AbortError') return 'cancelled';
     download(file);
-    return false;
+    return 'unconfirmed';
   }
+}
+
+// Built up front for the same reason as the backup file: share() needs the tap.
+let sampleBuild: Promise<File> | undefined;
+function buildSample() {
+  sampleBuild ??= import('../../data/sample')
+    .then(({ sampleFile }) => new File([sampleFile()], '釣具箱-範例.xlsx', { type: XLSX_TYPE }))
+    .catch((e: unknown) => {
+      sampleBuild = undefined;
+      throw e;
+    });
+  return sampleBuild;
 }
 
 function ImportPanel() {
   const [parsed, setParsed] = useState<Parsed>();
   const [error, setError] = useState('');
   const hasData = gear.value.length + orders.value.length + trips.value.length > 0;
+  const [sample, setSample] = useState<File>();
+
+  useEffect(() => {
+    buildSample().then(setSample, () => setError('範例檔準備失敗，請重新開啟 App'));
+  }, []);
+
+  const saveSample = async () => {
+    if (!sample) return;
+    setError('');
+    const result = await deliver(sample);
+    if (result === 'sent') showToast('已下載範例 Excel');
+    if (result === 'unconfirmed') showToast(UNCONFIRMED);
+  };
 
   const pick = async (file?: File) => {
     if (!file) return;
@@ -104,6 +131,9 @@ function ImportPanel() {
           onChange={(e) => void pick(e.currentTarget.files?.[0])}
         />
       )}
+      <button class="ghost" disabled={!sample} onClick={() => void saveSample()}>
+        下載範例 Excel
+      </button>
       {error && <p class="error">{error}</p>}
       {preview && parsed && (
         <>
@@ -160,16 +190,11 @@ function BackupPanel() {
   }, [g, l, o, c, t, ts]);
   const run = async () => {
     if (!file) return;
-    try {
-      if (await deliver(file)) {
-        await setSetting('lastBackupAt', Date.now());
-        showToast('已匯出備份');
-      } else {
-        showToast('分享失敗，已改用下載。請確認檔案有存下來，再重試一次分享');
-      }
-    } catch (e) {
-      if ((e as Error).name !== 'AbortError') showToast(message(e));
-    }
+    const result = await deliver(file);
+    if (result === 'unconfirmed') showToast(UNCONFIRMED);
+    if (result !== 'sent') return;
+    await setSetting('lastBackupAt', Date.now());
+    showToast('已匯出備份');
   };
   const last = lastBackupAt.value;
   return (

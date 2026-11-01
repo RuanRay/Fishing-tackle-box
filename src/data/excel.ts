@@ -246,6 +246,7 @@ export function parseWorkbook(data: ArrayBuffer): Parsed {
   }
   const gear = sheetRows(wb, '器材清單', GEAR_HEAD).map((r) => parseGear(r, specs.get(Number(r['編號'])) ?? []));
   if (new Set(gear.map((g) => g.no)).size !== gear.length) throw new Error('器材編號有重複');
+  if (new Set(gear.map((g) => g.id)).size !== gear.length) throw new Error('內部ID 有重複，請清空該欄後再匯入');
   return { gear, orders: sheetRows(wb, '訂單', ORDER_HEAD).map(parseOrder), extras: parseExtras(wb) };
 }
 
@@ -298,7 +299,7 @@ export function buildWorkbook(
     const spec: Spec = { ...g.spec, remainM: currentMetres(g, logs) };
     const row: Row = {
       編號: g.no,
-      [ID_COLUMN]: g.id,
+      [ID_COLUMN]: g.id || undefined,
       分類: g.category,
       品名: g.name,
       '規格/描述': g.desc,

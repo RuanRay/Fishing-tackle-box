@@ -33,6 +33,12 @@ const fresh = async (g: Gear) => (await db.gear.get(g.id))!;
 beforeEach(clearAll);
 
 describe('db', () => {
+  it('does not count an import as a backup', async () => {
+    await importData({ gear: [gear()], orders: [], extras: { trips: [] } });
+    expect(await db.settings.get('lastBackupAt')).toBeUndefined();
+    expect(await db.settings.get('importedAt')).toBeDefined();
+  });
+
   it('refuses to import over existing data', async () => {
     await importData({ gear: [gear()], orders: [], extras: { trips: [] } });
     await expect(importData({ gear: [gear({ no: 2 })], orders: [], extras: { trips: [] } })).rejects.toThrow(

@@ -113,6 +113,11 @@ describe('export round trip', () => {
     expect(again.gear.map((g) => g.id)).toEqual(all.map((g) => g.id));
   });
 
+  it('rejects duplicate internal ids with a clear message', () => {
+    const twin = gear({ no: 9, id: lure.id });
+    expect(() => parseWorkbook(workbookBytes(buildWorkbook([lure, twin], [], [])))).toThrow('內部ID 有重複');
+  });
+
   it('keeps blank order cells blank', () => {
     const again = parseWorkbook(workbookBytes(buildWorkbook(all, [{ ...order, shop: '' }], [])));
     expect(again.orders[0]?.shop).toBe('');

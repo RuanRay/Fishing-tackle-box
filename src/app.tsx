@@ -6,7 +6,7 @@ import { Equipment } from './ui/pages/Equipment';
 import { Inventory } from './ui/pages/Inventory';
 import { Settings } from './ui/pages/Settings';
 import { Trips } from './ui/pages/Trips';
-import { cutting, editing, gear, lastBackupAt, loaded, tab, toast } from './state';
+import { cutting, editing, gear, importedAt, lastBackupAt, loaded, tab, toast } from './state';
 import type { Tab } from './state';
 
 const BACKUP_DAYS = 14;
@@ -18,7 +18,7 @@ const NAV: { name: Tab; Icon: typeof Boxes }[] = [
 ];
 
 function BackupReminder() {
-  const last = lastBackupAt.value;
+  const last = lastBackupAt.value ?? importedAt.value;
   if (!gear.value.length || !last || Date.now() - last < BACKUP_DAYS * 86_400_000) return null;
   return (
     <div class="banner">

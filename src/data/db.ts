@@ -53,7 +53,7 @@ export async function importData({ gear, orders, extras }: Parsed) {
     await db.trips.bulkAdd(extras.trips);
     if (extras.config) await setSetting('config', extras.config);
     if (extras.templates) await setSetting('templates', extras.templates);
-    await setSetting('lastBackupAt', Date.now());
+    await setSetting('importedAt', Date.now());
   });
 }
 

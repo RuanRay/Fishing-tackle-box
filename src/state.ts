@@ -25,6 +25,7 @@ export const logs = signal<StockLog[]>([]);
 export const orders = signal<Order[]>([]);
 export const photos = signal<Map<string, string>>(new Map());
 export const lastBackupAt = signal<number | undefined>(undefined);
+export const importedAt = signal<number | undefined>(undefined);
 export const loaded = signal(false);
 export const config = signal<RuleConfig>(DEFAULT_CONFIG);
 export const templates = signal<Template[]>(DEFAULT_TEMPLATES);
@@ -53,6 +54,9 @@ export function startLiveData() {
   liveQuery(() => db.orders.toArray()).subscribe((rows) => (orders.value = rows), fail);
   liveQuery(() => db.settings.get('lastBackupAt')).subscribe((s) => {
     lastBackupAt.value = s?.value as number | undefined;
+  }, fail);
+  liveQuery(() => db.settings.get('importedAt')).subscribe((s) => {
+    importedAt.value = s?.value as number | undefined;
   }, fail);
   liveQuery(() => db.settings.get('config')).subscribe((s) => {
     config.value = { ...DEFAULT_CONFIG, ...parsed<Partial<RuleConfig>>(s?.value, {}) };
