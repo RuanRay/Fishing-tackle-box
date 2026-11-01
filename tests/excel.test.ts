@@ -81,6 +81,29 @@ describe('export round trip', () => {
     expect(again.extras).toEqual(extras);
   });
 
+  it('keeps a trip too long for one Excel cell', () => {
+    const items = Array.from({ length: 800 }, (_, i) => ({
+      key: `k${i}`,
+      group: '  假餌  ',
+      label: `很長的器材名稱 🎣 ${i} 帶空白  `,
+      missing: false,
+      checked: false,
+    }));
+    const trip = { id: 't', name: '長清單', at: 1, items };
+    expect(JSON.stringify(trip).length).toBeGreaterThan(65_000);
+    const again = parseWorkbook(workbookBytes(buildWorkbook(all, [order], [], { trips: [trip] })));
+    expect(again.extras.trips).toEqual([trip]);
+  });
+
+  it('splits on a character boundary when an emoji straddles the cell limit', () => {
+    const trip = { id: 't', name: 'x', at: 1, items: [] };
+    for (const pad of [29_960, 29_961, 29_962, 29_963]) {
+      const long = { ...trip, name: `${'字'.repeat(pad)}🎣🎣🎣🎣` };
+      const again = parseWorkbook(workbookBytes(buildWorkbook(all, [order], [], { trips: [long] })));
+      expect(again.extras.trips).toEqual([long]);
+    }
+  });
+
   it('rejects a backup whose App data was damaged', () => {
     const bad = buildWorkbook(all, [order], [], { templates: '[]', trips: [] });
     bad.Sheets['App資料']!['B2'] = { t: 's', v: 'null' };

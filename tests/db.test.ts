@@ -7,6 +7,7 @@ import {
   db,
   deleteGear,
   importData,
+  photoBlob,
   markArrived,
   nextNo,
   undoConsume,
@@ -97,6 +98,12 @@ describe('db', () => {
     await importData({ gear: [gear()], orders: [], extras: { config: '{"rate":5}', templates: '[]', trips } });
     expect(await db.trips.count()).toBe(1);
     expect((await db.settings.get('config'))?.value).toBe('{"rate":5}');
+  });
+
+  it('reads photos stored as bytes and as older Blobs', () => {
+    const fromBytes = photoBlob({ gearId: 'a', bytes: new Uint8Array([1, 2]).buffer, type: 'image/jpeg' });
+    expect([fromBytes.type, fromBytes.size]).toEqual(['image/jpeg', 2]);
+    expect(photoBlob({ gearId: 'b', blob: new Blob(['abc']) }).size).toBe(3);
   });
 
   it('a recount is appended as a stock change', async () => {

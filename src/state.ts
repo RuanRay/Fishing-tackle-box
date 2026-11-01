@@ -1,6 +1,6 @@
 import { signal } from '@preact/signals';
 import { liveQuery } from 'dexie';
-import { consume, db, undoConsume } from './data/db';
+import { consume, db, photoBlob, undoConsume } from './data/db';
 import { DEFAULT_CONFIG } from './domain/rules/common';
 import type { RuleConfig } from './domain/rules/common';
 import { DEFAULT_TEMPLATES, isTemplateList } from './domain/trip';
@@ -64,7 +64,7 @@ export function startLiveData() {
   liveQuery(() => db.trips.orderBy('at').reverse().toArray()).subscribe((rows) => (trips.value = rows), fail);
   liveQuery(() => db.photos.toArray()).subscribe((rows) => {
     photos.value.forEach((url) => URL.revokeObjectURL(url));
-    photos.value = new Map(rows.map((p) => [p.gearId, URL.createObjectURL(p.blob)]));
+    photos.value = new Map(rows.map((p) => [p.gearId, URL.createObjectURL(photoBlob(p))]));
   }, fail);
 }
 

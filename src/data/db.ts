@@ -6,10 +6,15 @@ import type { Template, Trip } from '../domain/trip';
 import type { Gear, Order, StockLog } from '../domain/types';
 import type { Parsed } from './excel';
 
+/** Bytes rather than a Blob: WebKit can refuse to store Blobs in IndexedDB. */
 export interface Photo {
   gearId: string;
-  blob: Blob;
+  bytes?: ArrayBuffer;
+  type?: string;
+  blob?: Blob;
 }
+
+export const photoBlob = (p: Photo) => p.blob ?? new Blob([p.bytes ?? new ArrayBuffer(0)], { type: p.type });
 
 export interface Setting {
   key: string;
@@ -123,5 +128,5 @@ export async function savePhoto(gearId: string, file: Blob) {
   bitmap.close();
   const blob = await new Promise<Blob | null>((done) => canvas.toBlob(done, 'image/jpeg', 0.8));
   if (!blob) throw new Error('照片處理失敗');
-  await db.photos.put({ gearId, blob });
+  await db.photos.put({ gearId, bytes: await blob.arrayBuffer(), type: blob.type });
 }

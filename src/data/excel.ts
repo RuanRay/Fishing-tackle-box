@@ -92,6 +92,21 @@ export interface Parsed {
 }
 
 const EXTRA_SHEET = 'App資料';
+const CONTINUED = '接續';
+const CELL_LIMIT = 30_000; // Excel cells hold 32,767 characters
+
+/** Long values span several rows so a big trip can never make the whole backup fail. */
+function extraRows(type: string, value: string) {
+  const rows: { 類型: string; 內容: string }[] = [];
+  for (let start = 0; start < value.length;) {
+    const last = value.charCodeAt(start + CELL_LIMIT - 1);
+    const isHighSurrogate = last >= 0xd800 && last <= 0xdbff;
+    const end = start + CELL_LIMIT - (isHighSurrogate ? 1 : 0);
+    rows.push({ 類型: rows.length ? CONTINUED : type, 內容: value.slice(start, end) });
+    start = end;
+  }
+  return rows;
+}
 const NO_EXTRAS: Extras = { trips: [] };
 
 function sheetRows(wb: XLSX.WorkBook, name: string, head: string[]): Row[] {
@@ -190,17 +205,22 @@ function parseExtras(wb: XLSX.WorkBook): Extras {
   const ws = wb.Sheets[EXTRA_SHEET];
   if (!ws) return NO_EXTRAS;
   const extras: Extras = { trips: [] };
+  const entries: { type: unknown; value: string }[] = [];
   for (const row of XLSX.utils.sheet_to_json<Row>(ws, { raw: true })) {
-    const value = String(row['內容']);
+    const previous = entries.at(-1);
+    if (row['類型'] === CONTINUED && previous) previous.value += String(row['內容']);
+    else entries.push({ type: row['類型'], value: String(row['內容']) });
+  }
+  for (const { type, value } of entries) {
     const data = readJson(value);
-    if (row['類型'] === '設定' && typeof data === 'object' && data !== null && !Array.isArray(data)) {
+    if (type === '設定' && typeof data === 'object' && data !== null && !Array.isArray(data)) {
       extras.config = value;
-    } else if (row['類型'] === '模板' && isTemplateList(data)) {
+    } else if (type === '模板' && isTemplateList(data)) {
       extras.templates = value;
-    } else if (row['類型'] === '釣行' && isTrip(data)) {
+    } else if (type === '釣行' && isTrip(data)) {
       extras.trips.push(data);
     } else {
-      throw new Error(`${EXTRA_SHEET}分頁的「${row['類型']}」內容不正確`);
+      throw new Error(`${EXTRA_SHEET}分頁的「${String(type)}」內容不正確`);
     }
   }
   return extras;
@@ -316,12 +336,12 @@ export function buildWorkbook(
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(specRows, { header: SPEC_HEAD }), '竿與捲線器規格');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(gearRows, { header: GEAR_HEAD }), '器材清單');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(orderRows, { header: ORDER_HEAD }), '訂單');
-  const extraRows = [
-    ...(extras.config ? [{ 類型: '設定', 內容: extras.config }] : []),
-    ...(extras.templates ? [{ 類型: '模板', 內容: extras.templates }] : []),
-    ...extras.trips.map((t) => ({ 類型: '釣行', 內容: JSON.stringify(t) })),
+  const extra = [
+    ...extraRows('設定', extras.config ?? ''),
+    ...extraRows('模板', extras.templates ?? ''),
+    ...extras.trips.flatMap((t) => extraRows('釣行', JSON.stringify(t))),
   ];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(extraRows, { header: ['類型', '內容'] }), EXTRA_SHEET);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(extra, { header: ['類型', '內容'] }), EXTRA_SHEET);
   return wb;
 }
 
