@@ -68,6 +68,30 @@ describe('db', () => {
     expect(await nextNo()).toBe(7);
   });
 
+  it('derives new numbers from orders and links after a restore', async () => {
+    const order = {
+      orderNo: 'o',
+      platform: '網購',
+      date: 'd',
+      shop: 's',
+      item: 'i',
+      qty: 1,
+      subtotal: 1,
+      status: '已完成',
+      counted: true,
+      gearNo: 70,
+    };
+    const reel = gear({ no: 2, spec: { lineNo: 80 } });
+    await importData({ gear: [reel], orders: [order], extras: { trips: [] } });
+    expect(await nextNo()).toBe(81);
+  });
+
+  it('refuses to import when only orders or trips remain', async () => {
+    const trip = { id: 't', name: '浮釣', at: 1, items: [] };
+    await importData({ gear: [], orders: [], extras: { trips: [trip] } });
+    await expect(importData({ gear: [gear()], orders: [], extras: { trips: [] } })).rejects.toThrow('已有資料');
+  });
+
   it('restores settings and trips from a backup', async () => {
     const trips = [{ id: 't', name: '浮釣', at: 1, items: [] }];
     await importData({ gear: [gear()], orders: [], extras: { config: '{"rate":5}', templates: '[]', trips } });

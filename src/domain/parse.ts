@@ -128,7 +128,11 @@ export function findDuplicates(draft: Draft, gear: Gear[]) {
       return close && !!s.lureType && normalize(s.lureType) === draft.lureType;
     }
     if (g.category === '鉤') return draft.hookNo !== undefined && s.hookNo === draft.hookNo;
-    if (g.category === '釣線') return s.lineType === draft.lineType && s.sizeNo === draft.sizeNo;
+    if (g.category === '釣線') {
+      const { lineType, sizeNo } = draft;
+      if (lineType === undefined && sizeNo === undefined) return false;
+      return (lineType === undefined || s.lineType === lineType) && (sizeNo === undefined || s.sizeNo === sizeNo);
+    }
     return sharedWords(name, normalize(`${g.name}${g.desc ?? ''}`)).length > 0;
   });
 }

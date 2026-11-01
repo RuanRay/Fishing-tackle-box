@@ -55,7 +55,7 @@ async function deliver(file: File) {
 function ImportPanel() {
   const [parsed, setParsed] = useState<Parsed>();
   const [error, setError] = useState('');
-  const hasData = gear.value.length > 0;
+  const hasData = gear.value.length + orders.value.length + trips.value.length > 0;
 
   const pick = async (file?: File) => {
     if (!file) return;
@@ -164,7 +164,7 @@ function BackupPanel() {
 
 function DangerPanel() {
   const [confirming, setConfirming] = useState(false);
-  if (!gear.value.length) return null;
+  if (!gear.value.length && !orders.value.length && !trips.value.length) return null;
   const clear = async () => {
     await clearAll();
     setConfirming(false);

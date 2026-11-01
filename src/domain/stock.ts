@@ -12,6 +12,11 @@ export const isLine = (g: Gear) => g.spec.remainM !== undefined;
 
 export const isHidden = (g: Gear) => g.status === '已不在' || g.status === '用完';
 
+export const isOnHand = (g: Gear) => !isHidden(g) && g.status !== '在途';
+
+/** Float stops are called 別針 too, but they carry no load. */
+export const isSnap = (g: Gear) => g.category === '配件' && g.name.includes('別針') && !g.name.includes('浮標');
+
 export function statusAfterRecount(status: Status, before: number, after: number): Status {
   if (before === after) return status;
   if (after <= 0 && status !== '已不在') return '用完';
@@ -34,7 +39,7 @@ export function missingFields(g: Gear): (keyof Spec)[] {
   if (g.category === '假餌') needs.push('weightG', 'lengthCm', 'layer');
   if (g.category === '浮標/助投器') needs.push('weightG');
   if (g.category === '鉛/天秤' && g.name.startsWith('中通')) needs.push('weightG');
-  if (g.category === '配件' && g.name === '別針') needs.push('strengthKg');
+  if (isSnap(g)) needs.push('strengthKg');
   return needs.filter((k) => g.spec[k] === undefined);
 }
 

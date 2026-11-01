@@ -58,6 +58,12 @@ describe('stock', () => {
     expect(statusAfterRecount('已不在', 2, 0)).toBe('已不在');
   });
 
+  it('asks for snap strength by name, but not for float stops', () => {
+    const snap = gear({ category: '配件', name: '增強別針' });
+    expect(missingFields(snap)).toEqual(['strengthKg']);
+    expect(missingFields({ ...snap, name: '浮標快速別針' })).toEqual([]);
+  });
+
   it('asks for rule fields only, never for gone gear', () => {
     expect(missingFields(gear({ category: '假餌', spec: { weightG: 5 } }))).toEqual(['lengthCm', 'layer']);
     expect(missingFields(gear({ category: '假餌', status: '已不在' }))).toEqual([]);

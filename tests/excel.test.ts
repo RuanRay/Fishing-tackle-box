@@ -81,6 +81,12 @@ describe('export round trip', () => {
     expect(again.extras).toEqual(extras);
   });
 
+  it('rejects a backup whose App data was damaged', () => {
+    const bad = buildWorkbook(all, [order], [], { templates: '[]', trips: [] });
+    bad.Sheets['App資料']!['B2'] = { t: 's', v: 'null' };
+    expect(() => parseWorkbook(workbookBytes(bad))).toThrow('內容不正確');
+  });
+
   it('reads dates that Excel converted to serial numbers', () => {
     const wb = buildWorkbook([{ ...lure, date: undefined }], [], []);
     wb.Sheets['器材清單']!['I2'] = { t: 'n', v: 46000 };

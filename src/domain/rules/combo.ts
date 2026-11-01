@@ -1,4 +1,4 @@
-import { currentMetres, isHidden } from '../stock';
+import { currentMetres, isOnHand } from '../stock';
 import type { Gear, StockLog } from '../types';
 import type { RuleConfig, Verdict } from './common';
 import { checkDrag } from './drag';
@@ -12,12 +12,12 @@ export interface Combo {
 }
 
 export const byNo = (gear: Gear[], no?: number) => gear.find((g) => g.no === no);
-export const rods = (gear: Gear[]) => gear.filter((g) => g.spec.subtype === '竿' && !isHidden(g));
-export const reels = (gear: Gear[]) => gear.filter((g) => g.spec.subtype === '捲線器' && !isHidden(g));
-export const lures = (gear: Gear[]) => gear.filter((g) => g.category === '假餌' && !isHidden(g));
+export const rods = (gear: Gear[]) => gear.filter((g) => g.spec.subtype === '竿' && isOnHand(g));
+export const reels = (gear: Gear[]) => gear.filter((g) => g.spec.subtype === '捲線器' && isOnHand(g));
+export const lures = (gear: Gear[]) => gear.filter((g) => g.category === '假餌' && isOnHand(g));
 
 export function fixedCombos(gear: Gear[]): Combo[] {
-  const live = gear.filter((g) => !isHidden(g));
+  const live = gear.filter(isOnHand);
   return reels(live).flatMap((reel) => {
     const rod = byNo(live, reel.spec.pairRodNo);
     return rod ? [{ rod, reel, line: byNo(live, reel.spec.lineNo) }] : [];

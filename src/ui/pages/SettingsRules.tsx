@@ -4,6 +4,7 @@ import type { RuleConfig } from '../../domain/rules/common';
 import { DEFAULT_TEMPLATES } from '../../domain/trip';
 import type { Requirement, Template } from '../../domain/trip';
 import { config, templates } from '../../state';
+import { NumberInput } from '../components/NumberInput';
 
 const FIELDS: { key: keyof RuleConfig; label: string; scale?: number }[] = [
   { key: 'tolerance', label: '餌重寬容 %', scale: 100 },
@@ -13,11 +14,8 @@ const FIELDS: { key: keyof RuleConfig; label: string; scale?: number }[] = [
 ];
 
 export function RulesPanel() {
-  const change = (key: keyof RuleConfig, raw: string, scale = 1) => {
-    const value = Number(raw);
-    if (raw !== '' && Number.isFinite(value) && value >= 0) {
-      void saveConfig({ ...config.value, [key]: value / scale });
-    }
+  const change = (key: keyof RuleConfig, value: number | undefined, scale = 1) => {
+    if (value !== undefined && value >= 0) void saveConfig({ ...config.value, [key]: value / scale });
   };
   return (
     <section class="card pad">
@@ -26,13 +24,10 @@ export function RulesPanel() {
         {FIELDS.map(({ key, label, scale = 1 }) => (
           <label class="field" key={key}>
             {label}
-            <input
-              type="number"
+            <NumberInput
               min="0"
-              step="any"
-              inputMode="decimal"
               value={Math.round(config.value[key] * scale * 1000) / 1000}
-              onChange={(e) => change(key, e.currentTarget.value, scale)}
+              onValue={(value) => change(key, value, scale)}
             />
           </label>
         ))}

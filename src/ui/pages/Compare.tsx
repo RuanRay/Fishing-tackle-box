@@ -10,6 +10,7 @@ import { currentQty } from '../../domain/stock';
 import { CATEGORIES } from '../../domain/types';
 import type { Category, Gear, Spec } from '../../domain/types';
 import { config, gear, logs, orders, showToast, tab } from '../../state';
+import { NumberInput } from '../components/NumberInput';
 import { Check } from '../components/Tag';
 
 const NUMBER_FIELDS: { key: keyof Draft; label: string }[] = [
@@ -20,7 +21,16 @@ const NUMBER_FIELDS: { key: keyof Draft; label: string }[] = [
   { key: 'lineM', label: '線長 m' },
 ];
 
+/** Each category keeps only its own type, so a corrected draft cannot carry the old one. */
+const withCategory = (draft: Draft, category: Category): Draft => ({
+  ...draft,
+  category,
+  lureType: category === '假餌' ? draft.lureType : undefined,
+  lineType: category === '釣線' ? draft.lineType : undefined,
+});
+
 function Confirm({ draft, onChange }: { draft: Draft; onChange: (d: Draft) => void }) {
+  const line = draft.category === '釣線';
   return (
     <section class="card pad">
       <h2>確認抓到的值</h2>
@@ -29,7 +39,7 @@ function Confirm({ draft, onChange }: { draft: Draft; onChange: (d: Draft) => vo
           分類
           <select
             value={draft.category}
-            onChange={(e) => onChange({ ...draft, category: e.currentTarget.value as Category })}
+            onChange={(e) => onChange(withCategory(draft, e.currentTarget.value as Category))}
           >
             {CATEGORIES.map((c) => (
               <option key={c}>{c}</option>
@@ -39,26 +49,20 @@ function Confirm({ draft, onChange }: { draft: Draft; onChange: (d: Draft) => vo
         <label class="field">
           類型
           <input
-            value={draft.lureType ?? draft.lineType ?? ''}
+            value={(line ? draft.lineType : draft.lureType) ?? ''}
             onInput={(e) => {
               const value = e.currentTarget.value.toUpperCase() || undefined;
-              onChange({ ...draft, ...(draft.category === '釣線' ? { lineType: value } : { lureType: value }) });
+              onChange({ ...draft, ...(line ? { lineType: value } : { lureType: value }) });
             }}
           />
         </label>
         {NUMBER_FIELDS.map(({ key, label }) => (
           <label class={`field${draft[key] === undefined ? ' pending' : ''}`} key={key}>
             {label}
-            <input
-              type="number"
-              step="any"
-              inputMode="decimal"
+            <NumberInput
               placeholder="待補"
-              value={draft[key] ?? ''}
-              onInput={(e) => {
-                const raw = e.currentTarget.value;
-                onChange({ ...draft, [key]: raw === '' ? undefined : Number(raw) });
-              }}
+              value={draft[key] as number | undefined}
+              onValue={(value) => onChange({ ...draft, [key]: value })}
             />
           </label>
         ))}

@@ -1,6 +1,5 @@
 import { fixedCombos, lureRows } from './rules/combo';
 import type { RuleConfig } from './rules/common';
-import { isHidden } from './stock';
 import type { Category, Gear } from './types';
 
 export interface Requirement {
@@ -65,8 +64,24 @@ const item = (group: string, label: string, gearId: string | undefined, missing 
   checked: false,
 });
 
+/** For a template that no longer exists: keep the list, but mark what can't be packed now. */
+export function refreshItems(items: TripItem[], gear: Gear[]): TripItem[] {
+  return items.map((i) => {
+    const held = gear.some((g) => g.id === i.gearId && g.status === '持有');
+    return { ...i, checked: false, missing: !held };
+  });
+}
+
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
+
+export const isTemplateList = (v: unknown): v is Template[] =>
+  Array.isArray(v) && v.every((t) => isRecord(t) && typeof t.name === 'string' && Array.isArray(t.required));
+
+export const isTrip = (v: unknown): v is Trip =>
+  isRecord(v) && typeof v.id === 'string' && typeof v.name === 'string' && Array.isArray(v.items);
+
 export function buildTrip(template: Template, gear: Gear[], config: RuleConfig): TripItem[] {
-  const owned = gear.filter((g) => !isHidden(g) && g.status !== '在途');
+  const owned = gear.filter((g) => g.status === '持有');
   const combos = fixedCombos(owned).sort((a, b) => (a.rod.spec.lureMaxG ?? 0) - (b.rod.spec.lureMaxG ?? 0));
   const combo = template.rod === 'light' ? combos[0] : combos.at(-1);
   const items: TripItem[] = [];

@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import { currentMetres, currentQty, summary } from '../domain/stock';
+import { isTemplateList, isTrip } from '../domain/trip';
 import type { Trip } from '../domain/trip';
 import { CATEGORIES, STATUSES } from '../domain/types';
 import type { Category, Gear, Order, Spec, SpecRow, Status, StockLog } from '../domain/types';
@@ -177,15 +178,30 @@ function parseOrder(row: Row): Order {
   };
 }
 
+function readJson(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return undefined;
+  }
+}
+
 function parseExtras(wb: XLSX.WorkBook): Extras {
   const ws = wb.Sheets[EXTRA_SHEET];
   if (!ws) return NO_EXTRAS;
   const extras: Extras = { trips: [] };
   for (const row of XLSX.utils.sheet_to_json<Row>(ws, { raw: true })) {
     const value = String(row['內容']);
-    if (row['類型'] === '設定') extras.config = value;
-    if (row['類型'] === '模板') extras.templates = value;
-    if (row['類型'] === '釣行') extras.trips.push(JSON.parse(value) as Trip);
+    const data = readJson(value);
+    if (row['類型'] === '設定' && typeof data === 'object' && data !== null && !Array.isArray(data)) {
+      extras.config = value;
+    } else if (row['類型'] === '模板' && isTemplateList(data)) {
+      extras.templates = value;
+    } else if (row['類型'] === '釣行' && isTrip(data)) {
+      extras.trips.push(data);
+    } else {
+      throw new Error(`${EXTRA_SHEET}分頁的「${row['類型']}」內容不正確`);
+    }
   }
   return extras;
 }

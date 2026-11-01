@@ -8,6 +8,7 @@ import { editing, logs, photos } from '../../state';
 import { fieldsFor } from '../fields';
 import type { Field } from '../fields';
 import { Modal } from './Modal';
+import { NumberInput } from './NumberInput';
 
 const blank = (): Gear => ({
   id: crypto.randomUUID(),
@@ -22,18 +23,21 @@ const blank = (): Gear => ({
   updatedAt: 0,
 });
 
-const parseNumber = (v: string) => (v === '' || !Number.isFinite(Number(v)) ? undefined : Number(v));
-
 function SpecInput({ field, draft, set }: { field: Field; draft: Gear; set: (s: Spec) => void }) {
   const value = draft.spec[field.key];
   const change = (raw: string) => {
-    const next = field.text || field.options ? raw || undefined : parseNumber(raw);
-    set({ ...draft.spec, [field.key]: next });
+    set({ ...draft.spec, [field.key]: raw || undefined });
   };
   return (
     <label class={`field${value === undefined ? ' pending' : ''}`}>
       {field.label}
-      {field.options ? (
+      {!field.text && !field.options ? (
+        <NumberInput
+          placeholder="待補"
+          value={value as number | undefined}
+          onValue={(next) => set({ ...draft.spec, [field.key]: next })}
+        />
+      ) : field.options ? (
         <select value={value ?? ''} onChange={(e) => change(e.currentTarget.value)}>
           <option value="">待補</option>
           {field.options.map((o) => (
@@ -41,14 +45,7 @@ function SpecInput({ field, draft, set }: { field: Field; draft: Gear; set: (s: 
           ))}
         </select>
       ) : (
-        <input
-          type={(field.text ? 'text' : 'number') as 'number'}
-          inputMode={field.text ? 'text' : 'decimal'}
-          step="any"
-          placeholder="待補"
-          value={value ?? ''}
-          onInput={(e) => change(e.currentTarget.value)}
-        />
+        <input placeholder="待補" value={value ?? ''} onInput={(e) => change(e.currentTarget.value)} />
       )}
     </label>
   );
@@ -58,8 +55,8 @@ export function GearEditor({ source }: { source: Gear | 'new' }) {
   const isNew = source === 'new';
   const line = !isNew && isLine(source);
   const [draft, setDraft] = useState<Gear>(isNew ? blank() : source);
-  const stockBefore = isNew ? 0 : ((line ? currentMetres(source, logs.value) : currentQty(source, logs.value)) ?? 0);
-  const [stock, setStock] = useState(stockBefore);
+  const stockBefore = isNew ? 1 : ((line ? currentMetres(source, logs.value) : currentQty(source, logs.value)) ?? 0);
+  const [stock, setStock] = useState<number | undefined>(stockBefore);
   const [photo, setPhoto] = useState<File>();
   const [preview, setPreview] = useState<string>();
   const [confirming, setConfirming] = useState(false);
@@ -78,11 +75,12 @@ export function GearEditor({ source }: { source: Gear | 'new' }) {
     e.preventDefault();
     try {
       if (isNew) {
-        await saveGear({ ...draft, no: await nextNo() });
+        await saveGear({ ...draft, qty: stock ?? 0, no: await nextNo() });
       } else {
         // A recount is appended like any other stock change, so history stays additive.
-        await saveGear({ ...draft, status: statusAfterRecount(draft.status, stockBefore, stock) });
-        await adjustStock(draft.id, line ? 'm' : 'qty', stock - stockBefore);
+        const counted = stock ?? 0;
+        await saveGear({ ...draft, status: statusAfterRecount(draft.status, stockBefore, counted) });
+        await adjustStock(draft.id, line ? 'm' : 'qty', counted - stockBefore);
       }
       if (photo) await savePhoto(draft.id, photo);
       close();
@@ -132,29 +130,11 @@ export function GearEditor({ source }: { source: Gear | 'new' }) {
           </label>
           <label class="field">
             {line ? '目前剩餘 m' : '目前數量'}
-            <input
-              required
-              type="number"
-              min="0"
-              step="any"
-              inputMode="decimal"
-              value={isNew ? draft.qty : stock}
-              onInput={(e) => {
-                const value = parseNumber(e.currentTarget.value) ?? 0;
-                if (isNew) patch({ qty: value });
-                else setStock(value);
-              }}
-            />
+            <NumberInput required min="0" value={stock} onValue={setStock} />
           </label>
           <label class="field">
             金額 NT$
-            <input
-              type="number"
-              step="any"
-              inputMode="decimal"
-              value={draft.amount ?? ''}
-              onInput={(e) => patch({ amount: parseNumber(e.currentTarget.value) })}
-            />
+            <NumberInput value={draft.amount} onValue={(amount) => patch({ amount })} />
           </label>
           <label class="field">
             購入日期
@@ -184,14 +164,7 @@ export function GearEditor({ source }: { source: Gear | 'new' }) {
         </label>
         <label class="field">
           低庫存門檻（留空不提醒）
-          <input
-            type="number"
-            min="0"
-            step="any"
-            inputMode="decimal"
-            value={draft.threshold ?? ''}
-            onInput={(e) => patch({ threshold: parseNumber(e.currentTarget.value) })}
-          />
+          <NumberInput min="0" value={draft.threshold} onValue={(threshold) => patch({ threshold })} />
         </label>
         <label class="field">
           備註

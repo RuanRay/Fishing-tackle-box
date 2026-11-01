@@ -3,7 +3,7 @@ import { liveQuery } from 'dexie';
 import { consume, db, undoConsume } from './data/db';
 import { DEFAULT_CONFIG } from './domain/rules/common';
 import type { RuleConfig } from './domain/rules/common';
-import { DEFAULT_TEMPLATES } from './domain/trip';
+import { DEFAULT_TEMPLATES, isTemplateList } from './domain/trip';
 import type { Template, Trip } from './domain/trip';
 import type { Gear, Order, StockLog } from './domain/types';
 
@@ -58,7 +58,8 @@ export function startLiveData() {
     config.value = { ...DEFAULT_CONFIG, ...parsed<Partial<RuleConfig>>(s?.value, {}) };
   }, fail);
   liveQuery(() => db.settings.get('templates')).subscribe((s) => {
-    templates.value = parsed(s?.value, DEFAULT_TEMPLATES);
+    const list = parsed<unknown>(s?.value, DEFAULT_TEMPLATES);
+    templates.value = isTemplateList(list) ? list : DEFAULT_TEMPLATES;
   }, fail);
   liveQuery(() => db.trips.orderBy('at').reverse().toArray()).subscribe((rows) => (trips.value = rows), fail);
   liveQuery(() => db.photos.toArray()).subscribe((rows) => {

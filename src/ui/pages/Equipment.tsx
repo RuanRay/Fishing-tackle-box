@@ -4,7 +4,7 @@ import type { Combo } from '../../domain/rules/combo';
 import { checkHook } from '../../domain/rules/hook';
 import { checkLureWeight } from '../../domain/rules/lureWeight';
 import { checkSnapLure } from '../../domain/rules/snap';
-import { isHidden } from '../../domain/stock';
+import { isOnHand } from '../../domain/stock';
 import type { Gear } from '../../domain/types';
 import { config, editing, gear, logs } from '../../state';
 import { Modal } from '../components/Modal';
@@ -19,8 +19,8 @@ function lineSummary(line?: Gear) {
 }
 
 export function LureDetail({ lure, onClose }: { lure: Gear; onClose: () => void }) {
-  const snaps = gear.value.filter((g) => !isHidden(g) && g.spec.lureMaxG !== undefined && g.category === '配件');
-  const hooks = gear.value.filter((g) => g.category === '鉤' && !isHidden(g) && g.spec.hookType === lure.spec.hookType);
+  const snaps = gear.value.filter((g) => isOnHand(g) && g.spec.lureMaxG !== undefined && g.category === '配件');
+  const hooks = gear.value.filter((g) => g.category === '鉤' && isOnHand(g) && g.spec.hookType === lure.spec.hookType);
   return (
     <Modal title={lure.name} onClose={onClose}>
       <div class="form">

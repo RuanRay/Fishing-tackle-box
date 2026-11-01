@@ -3,7 +3,7 @@ import { checkCastWeight } from '../../domain/rules/castWeight';
 import { comboChecks, lureRows, reels, rods } from '../../domain/rules/combo';
 import { checkLeader } from '../../domain/rules/leader';
 import { checkSnapStrength } from '../../domain/rules/snap';
-import { isHidden } from '../../domain/stock';
+import { isOnHand, isSnap } from '../../domain/stock';
 import type { Gear } from '../../domain/types';
 import { config, gear, logs } from '../../state';
 import { Check, Tag } from '../components/Tag';
@@ -48,14 +48,14 @@ export function FreeCombo({ onLure }: { onLure: (g: Gear) => void }) {
   const [picked, setPicked] = useState<Record<string, string | undefined>>({});
   const [bait, setBait] = useState('');
   const [sinkerG, setSinkerG] = useState('');
-  const live = gear.value.filter((g) => !isHidden(g));
+  const live = gear.value.filter(isOnHand);
   const find = (key: string) => live.find((g) => g.id === picked[key]);
   const pick = (key: string) => (id?: string) => setPicked({ ...picked, [key]: id });
 
   const lines = live.filter((g) => g.category === '釣線');
   const mains = lines.filter((g) => g.spec.lineRole !== '子線');
   const leaders = lines.filter((g) => g.spec.lineRole === '子線');
-  const snaps = live.filter((g) => g.category === '配件' && g.name.includes('別針'));
+  const snaps = live.filter(isSnap);
   const sinkers = live.filter((g) => g.category === '鉛/天秤');
   const floats = live.filter((g) => g.category === '浮標/助投器');
 

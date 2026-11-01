@@ -88,6 +88,12 @@ describe('findDuplicates', () => {
     expect(findDuplicates(parseProduct('PE 1.0號'), [line])).toEqual([]);
   });
 
+  it('treats a line size the listing does not state as unknown', () => {
+    const line = gear({ category: '釣線', spec: { lineType: 'PE', sizeNo: 0.8 } });
+    expect(findDuplicates(parseProduct('PE線 100米'), [line])).toEqual([line]);
+    expect(findDuplicates(parseProduct('主線'), [line])).toEqual([]);
+  });
+
   it('matches accessories by shared keyword and ignores gone gear', () => {
     const snap = gear({ category: '配件', name: '增強葫蘆別針' });
     expect(findDuplicates(parseProduct('快速別針'), [snap])).toEqual([snap]);

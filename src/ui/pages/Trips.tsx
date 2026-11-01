@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks';
 import { saveTrip } from '../../data/db';
-import { buildTrip } from '../../domain/trip';
+import { buildTrip, refreshItems } from '../../domain/trip';
 import type { Trip, TripItem } from '../../domain/trip';
 import { config, gear, showToast, templates, trips } from '../../state';
 
@@ -8,8 +8,6 @@ interface Draft {
   name: string;
   items: TripItem[];
 }
-
-const reset = (items: TripItem[]) => items.map((i) => ({ ...i, checked: false }));
 
 function Checklist({ draft, onChange, onDone }: { draft: Draft; onChange: (d: Draft) => void; onDone: () => void }) {
   const groups = [...new Set(draft.items.map((i) => i.group))];
@@ -57,7 +55,11 @@ function Checklist({ draft, onChange, onDone }: { draft: Draft; onChange: (d: Dr
 export function Trips() {
   const [draft, setDraft] = useState<Draft>();
   if (draft) return <Checklist draft={draft} onChange={setDraft} onDone={() => setDraft(undefined)} />;
-  const copy = (t: Trip) => setDraft({ name: t.name, items: reset(t.items) });
+  const copy = (t: Trip) => {
+    const template = templates.value.find((x) => x.name === t.name);
+    const items = template ? buildTrip(template, gear.value, config.value) : refreshItems(t.items, gear.value);
+    setDraft({ name: t.name, items });
+  };
   return (
     <>
       <section class="choices">

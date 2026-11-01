@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { DEFAULT_CONFIG as cfg } from '../src/domain/rules/common';
-import { buildTrip, DEFAULT_TEMPLATES } from '../src/domain/trip';
+import { buildTrip, DEFAULT_TEMPLATES, refreshItems } from '../src/domain/trip';
 import type { Gear } from '../src/domain/types';
 
 let no = 0;
@@ -40,6 +40,23 @@ it('marks what the template needs but the box lacks', () => {
   const items = buildTrip(DEFAULT_TEMPLATES[2]!, all, cfg);
   expect(items.find((i) => i.label === '缺浮標')?.missing).toBe(true);
   expect(items.filter((i) => i.group === '假餌')).toEqual([]);
+});
+
+it('copying an old list marks gear that can no longer be packed', () => {
+  const items = buildTrip(DEFAULT_TEMPLATES[0]!, all, cfg);
+  const rod = items.find((i) => i.label === 'A')!;
+  const refreshed = refreshItems(
+    items.map((i) => ({ ...i, checked: true })),
+    all.filter((g) => g.id !== rod.gearId),
+  );
+  expect(refreshed.find((i) => i.label === 'A')).toMatchObject({ missing: true, checked: false });
+  expect(refreshed.find((i) => i.label === 'L')).toMatchObject({ missing: false, checked: false });
+});
+
+it('does not pack gear stored elsewhere', () => {
+  const pouch = gear({ name: '腰包', status: '存放他處' });
+  const items = buildTrip(DEFAULT_TEMPLATES[0]!, [...all, pouch], cfg);
+  expect(items.find((i) => i.label === '缺腰包')?.missing).toBe(true);
 });
 
 it('does not pack gear that is gone or in transit', () => {

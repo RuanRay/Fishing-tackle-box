@@ -41,7 +41,8 @@ export const setSetting = (key: string, value: string | number) => db.settings.p
 
 export async function importData({ gear, orders, extras }: Parsed) {
   await db.transaction('rw', ALL, async () => {
-    if (await db.gear.count()) throw new Error('裝置上已有資料，請先清空再匯入');
+    const existing = await Promise.all([db.gear.count(), db.orders.count(), db.trips.count()]);
+    if (existing.some(Boolean)) throw new Error('裝置上已有資料，請先清空再匯入');
     await db.gear.bulkAdd(gear);
     await db.orders.bulkAdd(orders);
     await db.trips.bulkAdd(extras.trips);
@@ -69,9 +70,12 @@ export async function deleteGear(id: string) {
 
 /** Numbers are never reused: combos and orders point at them, even after a delete. */
 export async function nextNo() {
-  const last = await db.gear.orderBy('no').last();
-  const issued = Number(await getSetting('lastNo')) || 0;
-  const no = Math.max(last?.no ?? 0, issued) + 1;
+  const [gear, orders, issued] = await Promise.all([db.gear.toArray(), db.orders.toArray(), getSetting('lastNo')]);
+  const used = [
+    ...gear.flatMap((g) => [g.no, g.spec.lineNo ?? 0, g.spec.pairRodNo ?? 0]),
+    ...orders.map((o) => o.gearNo ?? 0),
+  ];
+  const no = Math.max(0, Number(issued) || 0, ...used) + 1;
   await setSetting('lastNo', no);
   return no;
 }
