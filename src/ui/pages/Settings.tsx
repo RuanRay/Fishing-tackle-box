@@ -247,11 +247,12 @@ export function Settings() {
           </select>
         </label>
       </section>
-      <RulesPanel />
-      <TemplatesPanel />
       <BackupPanel />
       <ImportPanel />
+      <RulesPanel />
+      <TemplatesPanel />
       <DangerPanel />
+      <p class="empty">版本 {__BUILD__} UTC</p>
     </>
   );
 }
