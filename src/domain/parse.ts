@@ -112,7 +112,7 @@ export function parseProduct(text: string): Draft {
     hookNo: category === '假餌' || category === '鉤' ? (marked ?? named) : undefined,
     sizeNo: category === '假餌' || category === '鉤' ? undefined : (named ?? marked),
     lineType,
-    lineM: firstNumber(t, /(\d+)\s*(?:M|米)(?![A-Z])/),
+    lineM: firstNumber(t, /(\d+(?:\.\d+)?)\s*(?:M|米)(?![A-Z])/),
   };
 }
 
@@ -140,7 +140,7 @@ export function findDuplicates(draft: Draft, gear: Gear[]) {
 /** Sizes such as 16# count as keywords too, because they are what repeats between listings. */
 function keywords(text: string) {
   const t = normalize(text);
-  const sizes = t.replace(/#\s*(\d+)/g, '$1#').match(/\d+(?:\.\d+)?\s*(?:#|G(?![A-Z])|克)/g) ?? [];
+  const sizes = t.replace(/(?<!\d)#\s*(\d+)/g, '$1#').match(/\d+(?:\.\d+)?\s*(?:#|G(?![A-Z])|克)/g) ?? [];
   return new Set([...VOCAB.filter((w) => t.includes(w)), ...sizes.map((s) => s.replace(/\s/g, '').replace('克', 'G'))]);
 }
 

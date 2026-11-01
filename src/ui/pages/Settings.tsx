@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { clearAll, importData, setSetting } from '../../data/db';
 import { today } from '../../domain/date';
 import type { Parsed } from '../../data/excel';
@@ -41,14 +41,22 @@ function download(file: File) {
   setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
 }
 
-/** iOS standalone apps cannot use <a download>; the share sheet offers "Save to Files". */
+/**
+ * iOS standalone apps cannot use <a download>; the share sheet offers "Save to Files".
+ * Returns false when the file went out by a route we cannot confirm.
+ */
 async function deliver(file: File) {
-  if (!navigator.canShare?.({ files: [file] })) return download(file);
+  if (!navigator.canShare?.({ files: [file] })) {
+    download(file);
+    return true;
+  }
   try {
     await navigator.share({ files: [file] });
+    return true;
   } catch (e) {
     if ((e as Error).name === 'AbortError') throw e;
     download(file);
+    return false;
   }
 }
 
@@ -133,18 +141,32 @@ function ImportPanel() {
 function BackupPanel() {
   const [persisted, setPersisted] = useState<boolean>();
   useEffect(() => void navigator.storage?.persisted?.().then(setPersisted), []);
-  const ready = useRef<File | undefined>(undefined);
+  const [file, setFile] = useState<File>();
   const [g, l, o, c, t, ts] = [gear.value, logs.value, orders.value, config.value, templates.value, trips.value];
+  // share() must run straight from the tap on iOS, so the file is built ahead of time.
   useEffect(() => {
-    ready.current = undefined;
-    if (g.length) void prepareFile().then((file) => (ready.current = file));
+    setFile(undefined);
+    if (!g.length) return;
+    let stale = false;
+    const timer = setTimeout(() => {
+      void prepareFile().then((built) => {
+        if (!stale) setFile(built);
+      });
+    }, 500);
+    return () => {
+      stale = true;
+      clearTimeout(timer);
+    };
   }, [g, l, o, c, t, ts]);
-  // Awaiting work before share() can lose the tap iOS requires, so the file is built ahead of time.
   const run = async () => {
+    if (!file) return;
     try {
-      await deliver(ready.current ?? (await prepareFile()));
-      await setSetting('lastBackupAt', Date.now());
-      showToast('已匯出備份');
+      if (await deliver(file)) {
+        await setSetting('lastBackupAt', Date.now());
+        showToast('已匯出備份');
+      } else {
+        showToast('分享失敗，已改用下載。請確認檔案有存下來，再重試一次分享');
+      }
     } catch (e) {
       if ((e as Error).name !== 'AbortError') showToast(message(e));
     }
@@ -155,8 +177,8 @@ function BackupPanel() {
       <h2>備份</h2>
       <p>資料只存在這台裝置。上次備份：{last ? new Date(last).toLocaleDateString('zh-TW') : '尚未備份'}</p>
       <p>持續性儲存：{persisted === undefined ? '不支援' : persisted ? '已啟用' : '未啟用'}。Excel 備份不含照片。</p>
-      <button class="primary" disabled={!gear.value.length} onClick={() => void run()}>
-        匯出 Excel
+      <button class="primary" disabled={!file} onClick={() => void run()}>
+        {file || !gear.value.length ? '匯出 Excel' : '準備備份檔…'}
       </button>
     </section>
   );

@@ -49,6 +49,7 @@ const SPEC_COLUMNS: [string, keyof Spec][] = [
   ['鉤種', 'hookType'],
   ['鉤號', 'hookNo'],
 ];
+const ID_COLUMN = '內部ID'; // optional: keeps saved trips linked to their gear across a restore
 const GEAR_HEAD = [...GEAR_BASE, '子類', '消耗品', '低庫存門檻', ...SPEC_COLUMNS.slice(1).map(([h]) => h)];
 const SPEC_HEAD = ['器材', '項目', '參數', '來源/備註', '器材編號'];
 const ORDER_HEAD = [
@@ -123,6 +124,8 @@ function dateText(v: Cell) {
   return typeof v === 'number' ? (XLSX.SSF.format('yyyy-mm-dd', v) as string) : text(v);
 }
 
+const blank = (v: Cell) => text(v) ?? '';
+
 function text(v: Cell) {
   return v === undefined || v === '' ? undefined : String(v);
 }
@@ -150,7 +153,7 @@ function parseGear(row: Row, specRows: SpecRow[]): Gear {
     if (value !== undefined) (spec as Record<string, unknown>)[key] = value;
   }
   return {
-    id: crypto.randomUUID(),
+    id: text(row[ID_COLUMN]) ?? crypto.randomUUID(),
     no,
     category,
     name: String(row['品名']),
@@ -178,16 +181,16 @@ function parseOrder(row: Row): Order {
   if (!text(row['訂單編號']) || subtotal === undefined || qty === undefined) throw new Error(`${where}資料不完整`);
   return {
     orderNo: String(row['訂單編號']),
-    platform: String(row['平台']),
+    platform: blank(row['平台']),
     date: dateText(row['下單日期']) ?? '',
-    shop: String(row['賣場']),
-    item: String(row['品項']),
+    shop: blank(row['賣場']),
+    item: blank(row['品項']),
     option: text(row['規格']),
     category: text(row['分類']),
     qty,
     subtotal,
     paid: num(row['訂單實付(NT$)'], `${where}的實付`),
-    status: String(row['訂單狀態']),
+    status: blank(row['訂單狀態']),
     counted: row['計入'] === '是',
     gearNo: num(row['器材編號'], `${where}的器材編號`),
   };
@@ -234,9 +237,9 @@ export function parseWorkbook(data: ArrayBuffer): Parsed {
     if (!no) throw new Error('規格分頁有一列沒有器材編號');
     const rows = specs.get(no) ?? [];
     rows.push({
-      label: String(r['器材']),
-      item: String(r['項目']),
-      value: String(r['參數']),
+      label: blank(r['器材']),
+      item: blank(r['項目']),
+      value: blank(r['參數']),
       note: text(r['來源/備註']),
     });
     specs.set(no, rows);
@@ -295,6 +298,7 @@ export function buildWorkbook(
     const spec: Spec = { ...g.spec, remainM: currentMetres(g, logs) };
     const row: Row = {
       編號: g.no,
+      [ID_COLUMN]: g.id,
       分類: g.category,
       品名: g.name,
       '規格/描述': g.desc,
@@ -334,7 +338,11 @@ export function buildWorkbook(
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, overviewSheet(sorted, logs), '總覽');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(specRows, { header: SPEC_HEAD }), '竿與捲線器規格');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(gearRows, { header: GEAR_HEAD }), '器材清單');
+  XLSX.utils.book_append_sheet(
+    wb,
+    XLSX.utils.json_to_sheet(gearRows, { header: [...GEAR_HEAD, ID_COLUMN] }),
+    '器材清單',
+  );
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(orderRows, { header: ORDER_HEAD }), '訂單');
   const extra = [
     ...extraRows('設定', extras.config ?? ''),

@@ -52,6 +52,13 @@ describe('db', () => {
     expect(await consume(after, 'qty', 1)).toBeUndefined();
   });
 
+  it('marks a line used up when what is left rounds to zero', async () => {
+    const line = gear({ category: '釣線', qty: 1, spec: { remainM: 10 } });
+    await importData({ gear: [line], orders: [], extras: { trips: [] } });
+    await consume(line, 'm', 9.96);
+    expect((await fresh(line)).status).toBe('用完');
+  });
+
   it('undo restores both the amount and the status', async () => {
     const g = gear({ qty: 1 });
     await importData({ gear: [g], orders: [], extras: { trips: [] } });

@@ -53,6 +53,20 @@ it('copying an old list marks gear that can no longer be packed', () => {
   expect(refreshed.find((i) => i.label === 'L')).toMatchObject({ missing: false, checked: false });
 });
 
+it('does not treat an unrated rod as the lightest', () => {
+  const unrated = gear({ category: '竿與捲線器', name: 'U', spec: { subtype: '竿' } });
+  const reel = gear({ category: '竿與捲線器', name: 'RU', spec: { subtype: '捲線器', pairRodNo: unrated.no } });
+  const labels = buildTrip(DEFAULT_TEMPLATES[0]!, [unrated, reel, ...all], cfg).map((i) => i.label);
+  expect(labels).toContain('A');
+  expect(labels).not.toContain('U');
+});
+
+it('does not count a float stop as a snap', () => {
+  const stop = gear({ name: '浮標快速別針' });
+  const items = buildTrip(DEFAULT_TEMPLATES[0]!, [...all, stop], cfg);
+  expect(items.find((i) => i.label === '缺別針')?.missing).toBe(true);
+});
+
 it('does not pack gear stored elsewhere', () => {
   const pouch = gear({ name: '腰包', status: '存放他處' });
   const items = buildTrip(DEFAULT_TEMPLATES[0]!, [...all, pouch], cfg);

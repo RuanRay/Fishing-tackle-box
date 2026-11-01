@@ -94,7 +94,8 @@ export async function consume(gear: Gear, kind: StockLog['kind'], amount: number
     const left = kind === 'm' ? currentMetres(gear, logs) : currentQty(gear, logs);
     if (left === undefined || left < amount) throw new Error(`庫存只剩 ${left ?? 0}`);
     await db.stockLog.add(entry);
-    if (left === amount) await db.gear.update(gear.id, { status: '用完', updatedAt: Date.now() });
+    const remaining = Math.round((left - amount) * 10) / 10;
+    if (remaining <= 0) await db.gear.update(gear.id, { status: '用完', updatedAt: Date.now() });
   });
   return entry.id;
 }

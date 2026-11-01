@@ -97,11 +97,25 @@ describe('export round trip', () => {
 
   it('splits on a character boundary when an emoji straddles the cell limit', () => {
     const trip = { id: 't', name: 'x', at: 1, items: [] };
-    for (const pad of [29_960, 29_961, 29_962, 29_963]) {
+    let straddled = false;
+    for (const pad of [29_975, 29_976, 29_977, 29_978]) {
       const long = { ...trip, name: `${'字'.repeat(pad)}🎣🎣🎣🎣` };
+      const cut = JSON.stringify(long).charCodeAt(29_999);
+      straddled ||= cut >= 0xd800 && cut <= 0xdbff;
       const again = parseWorkbook(workbookBytes(buildWorkbook(all, [order], [], { trips: [long] })));
       expect(again.extras.trips).toEqual([long]);
     }
+    expect(straddled).toBe(true);
+  });
+
+  it('keeps gear ids so saved trips stay linked after a restore', () => {
+    const again = parseWorkbook(workbookBytes(buildWorkbook(all, [order], [])));
+    expect(again.gear.map((g) => g.id)).toEqual(all.map((g) => g.id));
+  });
+
+  it('keeps blank order cells blank', () => {
+    const again = parseWorkbook(workbookBytes(buildWorkbook(all, [{ ...order, shop: '' }], [])));
+    expect(again.orders[0]?.shop).toBe('');
   });
 
   it('rejects a backup whose App data was damaged', () => {

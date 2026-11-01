@@ -35,7 +35,7 @@ export function missingFields(g: Gear): (keyof Spec)[] {
   if (g.status === '已不在') return [];
   const needs: (keyof Spec)[] = [];
   if (g.spec.subtype === '竿') needs.push('maxLoadKg');
-  if (g.category === '釣線') needs.push('strengthKg');
+  if (g.category === '釣線') needs.push('strengthKg', 'remainM');
   if (g.category === '假餌') needs.push('weightG', 'lengthCm', 'layer');
   if (g.category === '浮標/助投器') needs.push('weightG');
   if (g.category === '鉛/天秤' && g.name.startsWith('中通')) needs.push('weightG');

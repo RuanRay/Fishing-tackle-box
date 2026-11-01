@@ -65,6 +65,10 @@ describe('parseProduct', () => {
     expect(parseProduct('碳素路亞竿').category).toBe('竿與捲線器');
   });
 
+  it('reads a decimal line length', () => {
+    expect(parseProduct('PE線 2.5M').lineM).toBe(2.5);
+  });
+
   it('reads accessories and bags', () => {
     expect(parseProduct('增强葫芦别针 0号').category).toBe('配件');
     expect(parseProduct('防水配件盒').category).toBe('收納');
@@ -108,6 +112,11 @@ describe('findCancelled', () => {
     expect(findCancelled('騷羽 16#', [cancelled])).toEqual([cancelled]);
     expect(findCancelled('16#', [cancelled])).toEqual([]);
     expect(findCancelled('騷羽 #16', [cancelled])).toEqual([cancelled]);
+  });
+
+  it('finds a cancelled order whatever the size order', () => {
+    const vib = order('VIB', '5G 14#');
+    expect(findCancelled('VIB 14# 5G', [vib])).toEqual([vib]);
   });
 
   it('skips orders that went through', () => {

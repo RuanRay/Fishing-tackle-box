@@ -116,7 +116,7 @@ function toGear(draft: Draft, amount: number | undefined, no: number): Gear {
       hookNo: draft.hookNo,
       sizeNo: draft.sizeNo,
       lineType: draft.lineType,
-      ...(line ? { spoolM: draft.lineM, remainM: draft.lineM ?? 0 } : {}),
+      ...(draft.lineM !== undefined ? { spoolM: draft.lineM, remainM: draft.lineM } : {}),
     },
     specRows: [],
     updatedAt: 0,

@@ -1,5 +1,6 @@
 import { fixedCombos, lureRows } from './rules/combo';
 import type { RuleConfig } from './rules/common';
+import { isSnap } from './stock';
 import type { Category, Gear } from './types';
 
 export interface Requirement {
@@ -53,7 +54,9 @@ export const DEFAULT_TEMPLATES: Template[] = [
 ];
 
 const matches = (g: Gear, r: Requirement) =>
-  (!r.category || g.category === r.category) && (!r.keyword || g.name.includes(r.keyword));
+  (!r.category || g.category === r.category) &&
+  (!r.keyword || g.name.includes(r.keyword)) &&
+  (r.keyword !== SNAP.keyword || isSnap(g));
 
 const item = (group: string, label: string, gearId: string | undefined, missing = false): TripItem => ({
   key: `${group}:${gearId ?? label}`,
@@ -82,8 +85,12 @@ export const isTrip = (v: unknown): v is Trip =>
 
 export function buildTrip(template: Template, gear: Gear[], config: RuleConfig): TripItem[] {
   const owned = gear.filter((g) => g.status === '持有');
-  const combos = fixedCombos(owned).sort((a, b) => (a.rod.spec.lureMaxG ?? 0) - (b.rod.spec.lureMaxG ?? 0));
-  const combo = template.rod === 'light' ? combos[0] : combos.at(-1);
+  const combos = fixedCombos(owned);
+  const rated = combos
+    .filter((c) => c.rod.spec.lureMaxG !== undefined)
+    .sort((a, b) => a.rod.spec.lureMaxG! - b.rod.spec.lureMaxG!);
+  const pool = rated.length ? rated : combos;
+  const combo = template.rod === 'light' ? pool[0] : pool.at(-1);
   const items: TripItem[] = [];
   if (combo) {
     items.push(item('竿輪', combo.rod.name, combo.rod.id), item('竿輪', combo.reel.name, combo.reel.id));
