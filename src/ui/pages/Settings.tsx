@@ -1,0 +1,210 @@
+import { useEffect, useRef, useState } from 'preact/hooks';
+import { clearAll, importData, setSetting } from '../../data/db';
+import { today } from '../../domain/date';
+import type { Parsed } from '../../data/excel';
+import { summary } from '../../domain/stock';
+import {
+  applyTheme,
+  config,
+  gear,
+  lastBackupAt,
+  logs,
+  orders,
+  showToast,
+  tab,
+  templates,
+  theme,
+  trips,
+} from '../../state';
+import type { Theme } from '../../state';
+import { RulesPanel, TemplatesPanel } from './SettingsRules';
+
+const message = (e: unknown) => (e instanceof Error ? e.message : '操作失敗');
+const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+async function prepareFile() {
+  const { buildWorkbook, workbookBytes } = await import('../../data/excel');
+  const extras = {
+    config: JSON.stringify(config.value),
+    templates: JSON.stringify(templates.value),
+    trips: trips.value,
+  };
+  const bytes = workbookBytes(buildWorkbook(gear.value, orders.value, logs.value, extras));
+  return new File([bytes], `釣具盤點-${today()}.xlsx`, { type: XLSX_TYPE });
+}
+
+function download(file: File) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(file);
+  a.download = file.name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
+}
+
+/** iOS standalone apps cannot use <a download>; the share sheet offers "Save to Files". */
+async function deliver(file: File) {
+  if (!navigator.canShare?.({ files: [file] })) return download(file);
+  try {
+    await navigator.share({ files: [file] });
+  } catch (e) {
+    if ((e as Error).name === 'AbortError') throw e;
+    download(file);
+  }
+}
+
+function ImportPanel() {
+  const [parsed, setParsed] = useState<Parsed>();
+  const [error, setError] = useState('');
+  const hasData = gear.value.length > 0;
+
+  const pick = async (file?: File) => {
+    if (!file) return;
+    setError('');
+    setParsed(undefined);
+    try {
+      const { parseWorkbook } = await import('../../data/excel');
+      setParsed(parseWorkbook(await file.arrayBuffer()));
+    } catch (e) {
+      setError(message(e));
+    }
+  };
+
+  const commit = async () => {
+    if (!parsed) return;
+    try {
+      await importData(parsed);
+      await navigator.storage?.persist?.();
+      setParsed(undefined);
+      tab.value = '庫存';
+      showToast('匯入完成');
+    } catch (e) {
+      setError(message(e));
+    }
+  };
+
+  const preview = parsed && summary(parsed.gear, []);
+  return (
+    <section class="card pad">
+      <h2>匯入 v2 Excel</h2>
+      {hasData ? (
+        <p>裝置上已有資料。匯入前要先清空，避免覆蓋現有紀錄。</p>
+      ) : (
+        <input
+          type="file"
+          aria-label="選擇 v2 Excel"
+          accept=".xlsx"
+          onChange={(e) => void pick(e.currentTarget.files?.[0])}
+        />
+      )}
+      {error && <p class="error">{error}</p>}
+      {preview && parsed && (
+        <>
+          <table>
+            <tbody>
+              <tr>
+                <th scope="row">器材</th>
+                <td>{preview.rows} 筆</td>
+              </tr>
+              <tr>
+                <th scope="row">不含已不在</th>
+                <td>
+                  {preview.items} 項、{preview.pieces} 件
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">購入合計</th>
+                <td>NT${preview.amount}</td>
+              </tr>
+              <tr>
+                <th scope="row">訂單明細</th>
+                <td>{parsed.orders.length} 行</td>
+              </tr>
+            </tbody>
+          </table>
+          <button class="primary" onClick={() => void commit()}>
+            確認匯入
+          </button>
+        </>
+      )}
+    </section>
+  );
+}
+
+function BackupPanel() {
+  const [persisted, setPersisted] = useState<boolean>();
+  useEffect(() => void navigator.storage?.persisted?.().then(setPersisted), []);
+  const ready = useRef<File | undefined>(undefined);
+  const [g, l, o, c, t, ts] = [gear.value, logs.value, orders.value, config.value, templates.value, trips.value];
+  useEffect(() => {
+    ready.current = undefined;
+    if (g.length) void prepareFile().then((file) => (ready.current = file));
+  }, [g, l, o, c, t, ts]);
+  // Awaiting work before share() can lose the tap iOS requires, so the file is built ahead of time.
+  const run = async () => {
+    try {
+      await deliver(ready.current ?? (await prepareFile()));
+      await setSetting('lastBackupAt', Date.now());
+      showToast('已匯出備份');
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') showToast(message(e));
+    }
+  };
+  const last = lastBackupAt.value;
+  return (
+    <section class="card pad">
+      <h2>備份</h2>
+      <p>資料只存在這台裝置。上次備份：{last ? new Date(last).toLocaleDateString('zh-TW') : '尚未備份'}</p>
+      <p>持續性儲存：{persisted === undefined ? '不支援' : persisted ? '已啟用' : '未啟用'}。Excel 備份不含照片。</p>
+      <button class="primary" disabled={!gear.value.length} onClick={() => void run()}>
+        匯出 Excel
+      </button>
+    </section>
+  );
+}
+
+function DangerPanel() {
+  const [confirming, setConfirming] = useState(false);
+  if (!gear.value.length) return null;
+  const clear = async () => {
+    await clearAll();
+    setConfirming(false);
+    showToast('已清空');
+  };
+  return (
+    <section class="card pad">
+      <h2>清空資料</h2>
+      {confirming ? (
+        <button class="danger" onClick={() => void clear()}>
+          確定清空？器材、紀錄、照片都無法復原
+        </button>
+      ) : (
+        <button class="ghost" onClick={() => setConfirming(true)}>
+          清空這台裝置的資料
+        </button>
+      )}
+    </section>
+  );
+}
+
+export function Settings() {
+  return (
+    <>
+      <section class="card pad">
+        <h2>外觀</h2>
+        <label class="field">
+          深淺色
+          <select value={theme.value} onChange={(e) => applyTheme(e.currentTarget.value as Theme)}>
+            <option value="auto">跟隨系統</option>
+            <option value="light">淺色</option>
+            <option value="dark">深色</option>
+          </select>
+        </label>
+      </section>
+      <RulesPanel />
+      <TemplatesPanel />
+      <BackupPanel />
+      <ImportPanel />
+      <DangerPanel />
+    </>
+  );
+}

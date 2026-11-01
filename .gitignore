@@ -1,0 +1,14 @@
+node_modules/
+dist/
+test-results/
+.playwright-mcp/
+.env*
+
+# Personal data never enters this public repo
+private/
+*.xlsx
+*.xls
+*.csv
+「我的釣具箱」網頁企畫書.md
+開發階段-M1-M5.png
+我的釣具箱-UI樣稿.html
