@@ -22,6 +22,8 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+        env:
+          VITE_FIREBASE_CONFIG: ${{ secrets.FIREBASE_CONFIG }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

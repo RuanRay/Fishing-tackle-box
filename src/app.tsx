@@ -5,6 +5,7 @@ import { Compare } from './ui/pages/Compare';
 import { Equipment } from './ui/pages/Equipment';
 import { Inventory } from './ui/pages/Inventory';
 import { Settings } from './ui/pages/Settings';
+import { topBarText } from './ui/pages/SyncPanel';
 import { Trips } from './ui/pages/Trips';
 import { cutting, editing, gear, importedAt, lastBackupAt, loaded, tab, toast } from './state';
 import type { Tab } from './state';
@@ -54,7 +55,7 @@ export function App() {
     <div class="app">
       <header class="top">
         <h1>{tab.value}</h1>
-        <span class="local">僅存本機</span>
+        <span class="local">{topBarText()}</span>
         <button class="icon" aria-label="設定" onClick={() => (tab.value = '設定')}>
           <SettingsIcon size={24} aria-hidden="true" />
         </button>

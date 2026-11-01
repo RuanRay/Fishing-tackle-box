@@ -8,18 +8,21 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "lint": "eslint src tests && prettier --check src tests"
+    "lint": "eslint src tests && prettier --check src tests",
+    "test:rules": "npx -y firebase-tools@13.35.1 emulators:exec --only firestore --project demo-tackle-box \"npx vitest run tests/security\""
   },
   "dependencies": {
     "@preact/signals": "2.11.4",
     "chart.js": "4.6.1",
     "dexie": "4.4.7",
+    "firebase": "13.1.0",
     "lucide-preact": "1.66.0",
     "preact": "11.1.1",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@babel/core": "7.29.7",
+    "@firebase/rules-unit-testing": "6.0.0",
     "@playwright/test": "1.64.1",
     "@preact/preset-vite": "2.10.6",
     "@types/node": "26.6.6",

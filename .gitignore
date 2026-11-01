@@ -3,6 +3,8 @@ dist/
 test-results/
 .playwright-mcp/
 .env*
+*.log
+.firebase/
 
 # Personal data never enters this public repo
 private/

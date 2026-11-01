@@ -87,6 +87,7 @@ export interface Order {
   status: string;
   counted: boolean;
   gearNo?: number;
+  updatedAt?: number;
 }
 
 /** Stock changes are appended, never overwritten, so a later sync can merge them. */

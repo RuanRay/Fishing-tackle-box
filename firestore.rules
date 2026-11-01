@@ -1,0 +1,37 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function isSyncTable(table) {
+      return table in ['gear', 'orders', 'stockLog', 'photos', 'settings', 'trips'];
+    }
+
+    function hasValidShape(table) {
+      let doc = request.resource.data;
+      let allowed = table == 'photos' ? ['data', 'updatedAt', 'device', 'syncedAt', 'bytes']
+                                      : ['data', 'updatedAt', 'device', 'syncedAt'];
+      return doc.keys().hasOnly(allowed)
+        && doc.keys().hasAll(['data', 'updatedAt', 'device', 'syncedAt'])
+        && doc.updatedAt is int
+        && doc.device is string && doc.device.size() <= 64
+        && doc.syncedAt == request.time
+        && (doc.data == null || doc.data is map)
+        && (!('bytes' in doc) || (doc.bytes is bytes && doc.bytes.size() <= 900 * 1024));
+    }
+
+    match /users/{uid}/{table}/{id} {
+      allow read: if isOwner(uid) && isSyncTable(table);
+      // Deleting stays closed: removals are tombstones, so a stolen session cannot erase history outright.
+      allow create, update: if isOwner(uid) && isSyncTable(table) && hasValidShape(table);
+    }
+
+    // Everything else in the project is closed.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

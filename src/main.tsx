@@ -2,6 +2,7 @@ import { render } from 'preact';
 import { registerSW } from 'virtual:pwa-register';
 import { App } from './app';
 import { applyTheme, startLiveData, theme } from './state';
+import { startSync } from './syncClient';
 import './styles/base.css';
 import './styles/list.css';
 import './styles/shell.css';
@@ -18,4 +19,5 @@ registerSW({
 
 applyTheme(theme.value);
 startLiveData();
+void startSync();
 render(<App />, document.getElementById('app')!);

@@ -18,6 +18,7 @@ import {
 } from '../../state';
 import type { Theme } from '../../state';
 import { RulesPanel, TemplatesPanel } from './SettingsRules';
+import { SyncPanel } from './SyncPanel';
 
 const message = (e: unknown) => (e instanceof Error ? e.message : '操作失敗');
 const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -200,7 +201,7 @@ function BackupPanel() {
   return (
     <section class="card pad">
       <h2>備份</h2>
-      <p>資料只存在這台裝置。上次備份：{last ? new Date(last).toLocaleDateString('zh-TW') : '尚未備份'}</p>
+      <p>上次備份：{last ? new Date(last).toLocaleDateString('zh-TW') : '尚未備份'}</p>
       <p>持續性儲存：{persisted === undefined ? '不支援' : persisted ? '已啟用' : '未啟用'}。Excel 備份不含照片。</p>
       <button class="primary" disabled={!file} onClick={() => void run()}>
         {file || !gear.value.length ? '匯出 Excel' : '準備備份檔…'}
@@ -222,7 +223,7 @@ function DangerPanel() {
       <h2>清空資料</h2>
       {confirming ? (
         <button class="danger" onClick={() => void clear()}>
-          確定清空？器材、紀錄、照片都無法復原
+          確定清空這台裝置？已同步到雲端的資料之後會回來
         </button>
       ) : (
         <button class="ghost" onClick={() => setConfirming(true)}>
@@ -247,6 +248,7 @@ export function Settings() {
           </select>
         </label>
       </section>
+      <SyncPanel />
       <BackupPanel />
       <ImportPanel />
       <RulesPanel />
